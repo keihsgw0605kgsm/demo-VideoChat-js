@@ -41,8 +41,30 @@ io.on(
                 console.log( "signaling : ", socket.id );
                 console.log( "- type : ", objData.type );
 
-                // 送信元以外の全員に送信
-                socket.broadcast.emit( "signaling", objData );
+                // 指定の相手に送信
+                if( "to" in objData )
+                {
+                    console.log( "- to : ", objData.to );
+                    // 送信元SocketIDを送信データに付与し、指定の相手に送信
+                    objData.from = socket.id;
+                    socket.to( objData.to ).emit( "signaling", objData );
+                }
+                else
+                {
+                    console.error( "Unexpected : Unknown destination" );
+                }
+            } );
+
+        // ビデオチャット参加時の処理
+        socket.on(
+            "join",
+            ( objData ) =>
+            {
+                console.log( "join : ", socket.id );
+
+                // 「join」を送信元以外の全員に送信
+                // 送信元SocketIDを送信データに付与し、送信元以外の全員に送信
+                socket.broadcast.emit( "signaling", { from: socket.id, type: "join" } );
             } );
     } );
 

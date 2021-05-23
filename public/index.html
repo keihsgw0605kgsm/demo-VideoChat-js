@@ -7,55 +7,55 @@
         input:read-only, textarea:read-only {
             background-color: #CCC;
         }
+
+        html {
+            height: 100%;
+        }
+
+        #div_join_screen {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+            background-color: #888;
+        }
     </style>
 </head>
-<body>
-    <h1>My Video Chat</h1>
-    <input type="checkbox" id="checkbox_camera" onclick="onclickCheckbox_CameraMicrophone()">Camera
-    <input type="checkbox" id="checkbox_microphone" onclick="onclickCheckbox_CameraMicrophone()">Microphone
-    <br />
-    <video id="video_local" width="320" height="240" style="border: 1px solid black;" autoplay></video>
-    <video id="video_remote" width="320" height="240" style="border: 1px solid black;" autoplay></video><audio id="audio_remote" autoplay></audio>
+<body style="display: flex; flex-direction: column; width: 100%; height: 100%; margin: 0;">
+    <h1 style="margin: 8px">My Video Chat</h1>
 
-    <!--
-    <table border="1">
-        <tbody>
-            <tr>
-                <td></td>
-                <td>Offer side</td>
-                <td>Answer side</td>
-            </tr>
-            <tr>
-                <td>OfferSDP</td>
-                <td>
-                    <button onclick="onclickButton_CreateOfferSDP()">Create OfferSDP.</button>
-                    <br>
-                    <textarea id="textarea_offerside_offsersdp" rows="10" cols="40" readonly="readonly"></textarea>
-                </td>
-                <td>
-                    <br>
-                    <textarea id="textarea_answerside_offsersdp" rows="10" cols="40"></textarea>
-                </td>
-            </tr>
-            <tr>
-                <td>AnswerSDP</td>
-                <td>
-                    <br>
-                    <textarea id="textarea_offerside_answersdp" rows="10" cols="40"></textarea><br>
-                    <button onclick="onclickButton_SetAnswerSDPthenChatStarts()">Set AnswerSDP. Then the chat starts.</button>
-                </td>
-                <td>
-                    <button onclick="onclickButton_SetOfferSDPandCreateAnswerSDP()">Set OfferSDP and Create AnswerSDP.</button>
-                    <br>
-                    <textarea id="textarea_answerside_answersdp" rows="10" cols="40" readonly="readonly"></textarea><br>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-    -->
+    <div style="flex: 1;">
+        <div id="div_join_screen">
+            <!-- エンターキーによるボタン押下を行うために、<button>ではなく<form>と<input type="submit">を使用。
+            ボタン押下(=submit)時にページリロードが行われないように、onsubmitの設定の最後に"return false;"を追加。-->
+            <form action="" onsubmit="onsubmitButton_Join(); return false;" style="text-align: center; width: 100%;">
+                User name ( Nick name )<br />
+                <input type="text" id="input_username" placeholder="Enter User name" autofocus><br /><br />
+                <input type="submit" value="Join" />
+            </form>
+        </div>
 
-    <br />
-    <button onclick="onclickButton_SendOfferSDP()">Send OfferSDP.</button>
+        <div id="div_chat_screen" style="margin: 8px; display: none;">
+            <input type="checkbox" id="checkbox_camera" onclick="onclickCheckbox_CameraMicrophone()">Camera
+            <input type="checkbox" id="checkbox_microphone" onclick="onclickCheckbox_CameraMicrophone()">Microphone
+            <br />
+            <div id="div_userinfo" style="display: flex; flex-wrap: wrap">
+                <div border="1px solid black"><input type="text" id="text_username" readonly="readonly"><br /><video id="video_local" width="320" height="240" style="border: 1px solid black;" autoplay></video></div>
+                <!-- <div border="1px solid black"><input type="text" id="text_remote_username" readonly="readonly"><br /><video id="video_remote" width="320" height="240" style="border: 1px solid black;" autoplay></video><audio id="audio_remote" autoplay></audio></div> -->
+            </div>
+
+            <!-- エンターキーによるボタン押下を行うために、<button>ではなく<form>と<input type="submit">を使用。
+            ボタン押下(=submit)時にページリロードが行われないように、onsubmitの設定の最後に"return false;"を追加。-->
+            <form action="" onsubmit="onsubmitButton_SendMessage(); return false;">
+                <input type="text" id="text_message_for_send" size="40" /><input type="submit" value="Send message" />
+            </form>
+            <textarea id="textarea_message_received" rows="10" cols="60" readonly="readonly"></textarea>
+
+            <br />
+            <button onclick="onclickButton_LeaveChat()">Leave Chat.</button>
+        </div>
+    </div>
 
     <!-- Script -->
     <script src="/socket.io/socket.io.js"></script>

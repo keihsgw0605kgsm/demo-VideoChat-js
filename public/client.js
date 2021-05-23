@@ -2,19 +2,27 @@
 
 // ↓↓↓グローバル変数↓↓↓
 
+const g_elementDivJoinScreen = document.getElementById( "div_join_screen" );
+const g_elementDivChatScreen = document.getElementById( "div_chat_screen" );
+const g_elementInputUserName = document.getElementById( "input_username" );
+
 const g_elementCheckboxCamera = document.getElementById( "checkbox_camera" );
 const g_elementCheckboxMicrophone = document.getElementById( "checkbox_microphone" );
 
+const g_elementDivUserInfo = document.getElementById( "div_userinfo" );
+
+const g_elementTextUserName = document.getElementById( "text_username" );
+//const g_elementTextRemoteUserName = document.getElementById( "text_remote_username" );
+
 const g_elementVideoLocal = document.getElementById( "video_local" );
-const g_elementVideoRemote = document.getElementById( "video_remote" );
-const g_elementAudioRemote = document.getElementById( "audio_remote" );
+//const g_elementVideoRemote = document.getElementById( "video_remote" );
+//const g_elementAudioRemote = document.getElementById( "audio_remote" );
 
-//const g_elementTextareaOfferSideOfferSDP = document.getElementById( "textarea_offerside_offsersdp" );
-//const g_elementTextareaAnswerSideOfferSDP = document.getElementById( "textarea_answerside_offsersdp" );
-//const g_elementTextareaOfferSideAnswerSDP = document.getElementById( "textarea_offerside_answersdp" );
-//const g_elementTextareaAnswerSideAnswerSDP = document.getElementById( "textarea_answerside_answersdp" );
+const g_elementTextMessageForSend = document.getElementById( "text_message_for_send" );
+const g_elementTextareaMessageReceived = document.getElementById( "textarea_message_received" );
 
-let g_rtcPeerConnection = null;
+// let g_rtcPeerConnection = null;
+let g_mapRtcPeerConnection = new Map();
 
 // クライアントからサーバーへの接続要求
 const g_socket = io.connect();
@@ -22,6 +30,43 @@ const g_socket = io.connect();
 // ↑↑↑グローバル変数↑↑↑
 
 // ↓↓↓UIから呼ばれる関数↓↓↓
+
+// ページがunloadされる（閉じる、再読み込み、別ページへ移動）直前に呼ばれる関数
+window.addEventListener(
+    "beforeunload",
+    ( event ) =>
+    {
+        event.preventDefault(); // 既定の動作のキャンセル
+
+        onclickButton_LeaveChat();        // チャットからの離脱
+        g_socket.disconnect();    // Socket.ioによるサーバーとの接続の切断
+
+        e.returnValue = ""; // Chrome では returnValue を設定する必要がある
+        return ""; // Chrome 以外では、return を設定する必要がある
+    } );
+
+// 「Join」ボタンを押すと呼ばれる関数
+function onsubmitButton_Join()
+{
+    console.log( "UI Event : 'Join' button clicked." );
+
+    // ユーザー名
+    let strInputUserName = g_elementInputUserName.value;
+    console.log( "- User name :", strInputUserName );
+    if( !strInputUserName )
+    {
+        return;
+    }
+    g_elementTextUserName.value = strInputUserName;
+
+    // サーバーに"join"を送信
+    console.log( "- Send 'Join' to server" );
+    g_socket.emit( "join", {} );
+
+    // 画面の切り替え
+    g_elementDivJoinScreen.style.display = "none";  // 参加画面の非表示
+    g_elementDivChatScreen.style.display = "block";  // チャット画面の表示
+}
 
 // カメラとマイクのOn/Offのチェックボックスを押すと呼ばれる関数
 function onclickCheckbox_CameraMicrophone()
@@ -33,6 +78,8 @@ function onclickCheckbox_CameraMicrophone()
     let trackMicrophone_old = null;
     let bCamera_old = false;
     let bMicrophone_old = false;
+    let idCameraTrack_old = "";
+    let idMicrophoneTrack_old = "";
     let stream = g_elementVideoLocal.srcObject;
     if( stream )
     {
@@ -40,11 +87,13 @@ function onclickCheckbox_CameraMicrophone()
         if( trackCamera_old )
         {
             bCamera_old = true;
+            idCameraTrack_old = trackCamera_old.id;
         }
         trackMicrophone_old = stream.getAudioTracks()[0];
         if( trackMicrophone_old )
         {
             bMicrophone_old = true;
+            idMicrophoneTrack_old = trackMicrophone_old.id;
         }
     }
 
@@ -68,6 +117,25 @@ function onclickCheckbox_CameraMicrophone()
     {   // チェックボックスの状態の変化なし
         return;
     }
+
+    g_mapRtcPeerConnection.forEach( ( rtcPeerConnection ) => 
+    {
+        // コネクションオブジェクトに対してTrack削除を行う。
+        // （コネクションオブジェクトに対してTrack削除を行わなかった場合、使用していないstream通信が残る。）
+        let senders = rtcPeerConnection.getSenders();
+        senders.forEach( ( sender ) =>
+        {
+            if( sender.track )
+            {
+                if( idCameraTrack_old === sender.track.id
+                    || idMicrophoneTrack_old === sender.track.id)
+                {
+                    rtcPeerConnection.removeTrack( sender );
+                    // removeTrack()の結果として、通信相手に、streamの「removetrack」イベントが発生する。
+                }
+            }
+        } );
+    } );
 
     // 古いメディアストリームのトラックの停止（トラックの停止をせず、HTML要素のstreamの解除だけではカメラは停止しない（カメラ動作LEDは点いたまま））
     if( trackCamera_old )
@@ -98,6 +166,16 @@ function onclickCheckbox_CameraMicrophone()
     navigator.mediaDevices.getUserMedia( { video: bCamera_new, audio: bMicrophone_new } )
         .then( ( stream ) =>
         {
+            g_mapRtcPeerConnection.forEach( ( rtcPeerConnection ) => 
+            {
+                // コネクションオブジェクトに対してTrack追加を行う。
+                stream.getTracks().forEach( ( track ) =>
+                {
+                    rtcPeerConnection.addTrack( track, stream );
+                    // addTrack()の結果として、「Negotiation needed」イベントが発生する。
+                } );
+            } );
+
             // HTML要素へのメディアストリームの設定
             console.log( "Call : setStreamToElement( Video_Local, stream )" );
             setStreamToElement( g_elementVideoLocal, stream );
@@ -113,109 +191,65 @@ function onclickCheckbox_CameraMicrophone()
         } );
 }
 
-/* ---ここから「マニュアルシグナリング」のコードのコメントアウト
-// 「Create OfferSDP.」ボタンを押すと呼ばれる関数
-function onclickButton_CreateOfferSDP()
+// 「Send Message」ボタンを押すと呼ばれる関数
+function onsubmitButton_SendMessage()
 {
-    console.log( "UI Event : 'Create Offer SDP.' button clicked." );
+    console.log( "UI Event : 'Send Message' button clicked." );
 
-    if( g_rtcPeerConnection )
-    {   // 既にコネクションオブジェクトあり
-        alert( "Connection object already exists." );
-        return;
-    }
-
-    // RTCPeerConnectionオブジェクトの作成
-    console.log( "Call : createPeerConnection()" );
-    let rtcPeerConnection = createPeerConnection( g_elementVideoLocal.srcObject );
-    g_rtcPeerConnection = rtcPeerConnection;    // グローバル変数に設定
-
-    // OfferSDPの作成
-    createOfferSDP( rtcPeerConnection );
-}
-
-// 「Set OfferSDP and Create AnswerSDP.」ボタンを押すと呼ばれる関数
-function onclickButton_SetOfferSDPandCreateAnswerSDP()
-{
-    console.log( "UI Event : 'Set OfferSDP and Create AnswerSDP.' button clicked." );
-
-    if( g_rtcPeerConnection )
-    {   // 既にコネクションオブジェクトあり
-        alert( "Connection object already exists." );
-        return;
-    }
-
-    // OfferSDPを、テキストエリアから取得
-    let strOfferSDP = g_elementTextareaAnswerSideOfferSDP.value;
-    if( !strOfferSDP )
-    {   // OfferSDPが空
-        alert( "OfferSDP is empty. Please enter the OfferSDP." );
-        return;
-    }
-
-    // RTCPeerConnectionオブジェクトの作成
-    console.log( "Call : createPeerConnection()" );
-    let rtcPeerConnection = createPeerConnection( g_elementVideoLocal.srcObject );
-    g_rtcPeerConnection = rtcPeerConnection;    // グローバル変数に設定
-
-    // OfferSDPの設定とAnswerSDPの作成
-    let sessionDescription = new RTCSessionDescription( {
-        type: "offer",
-        sdp: strOfferSDP,
-    } );
-    console.log( "Call : setOfferSDP_and_createAnswerSDP()" );
-    setOfferSDP_and_createAnswerSDP( rtcPeerConnection, sessionDescription );
-}
-
-// 「Set AnswerSDP. Then the chat starts.」ボタンを押すと呼ばれる関数
-function onclickButton_SetAnswerSDPthenChatStarts()
-{
-    console.log( "UI Event : 'Set AnswerSDP. Then the chat starts.' button clicked." );
-
-    if( !g_rtcPeerConnection )
+    if( !g_mapRtcPeerConnection.size )
     {   // コネクションオブジェクトがない
         alert( "Connection object does not exist." );
         return;
     }
+    //if( !isDataChannelOpen( g_rtcPeerConnection ) )
+    //{   // DataChannelオブジェクトが開いていない
+    //    alert( "Datachannel is not open." );
+    //    return;
+    //}
 
-    // AnswerSDPを、テキストエリアから取得
-    let strAnswerSDP = g_elementTextareaOfferSideAnswerSDP.value;
-    if( !strAnswerSDP )
-    {   // AnswerSDPが空
-        alert( "AnswerSDP is empty. Please enter the AnswerSDP." );
+    if( !g_elementTextMessageForSend.value )
+    {
+        alert( "Message for send is empty. Please enter the message for send." );
         return;
     }
 
-    // AnswerSDPの設定
-    let sessionDescription = new RTCSessionDescription( {
-        type: "answer",
-        sdp: strAnswerSDP,
+    // メッセージをDataChannelを通して相手に直接送信
+    g_mapRtcPeerConnection.forEach( ( rtcPeerConnection ) =>
+    {
+        console.log( "- Send Message through DataChannel" );
+        rtcPeerConnection.datachannel.send( JSON.stringify( { type: "message", data: g_elementTextMessageForSend.value } ) );
     } );
-    console.log( "Call : setAnswerSDP()" );
-    setAnswerSDP( g_rtcPeerConnection, sessionDescription );
+
+    // 送信メッセージをメッセージテキストエリアへ追加
+    g_elementTextareaMessageReceived.value = g_elementTextMessageForSend.value + "\n" + g_elementTextareaMessageReceived.value; // 一番上に追加
+    //g_elementTextareaMessageReceived.value += g_elementTextMessageForSend.value + "\n"; // 一番下に追加
+    g_elementTextMessageForSend.value = "";
 }
---- ここまで、「マニュアルシグナリング」のコードのコメントアウト */
 
-// 「Send OfferSDP.」ボタンを押すと呼ばれる関数
-function onclickButton_SendOfferSDP()
+// 「Leave Chat.」ボタンを押すと呼ばれる関数
+function onclickButton_LeaveChat()
 {
-    console.log( "UI Event : 'Send OfferSDP.' button clicked." );
+    console.log( "UI Event : 'Leave Chat.' button clicked." );
 
-    // onclickButton_CreateOfferSDP()と同様の処理
+    g_mapRtcPeerConnection.forEach( ( rtcPeerConnection ) =>
+    {
+        if( isDataChannelOpen( rtcPeerConnection ) )
+        {   // チャット中
+            // チャット離脱の通知をDataChannelを通して相手に直接送信
+            console.log( "- Send 'leave' through DataChannel" );
+            rtcPeerConnection.datachannel.send( JSON.stringify( { type: "leave", data: "" } ) );
+        }
 
-    if( g_rtcPeerConnection )
-    {   // 既にコネクションオブジェクトあり
-        alert( "Connection object already exists." );
-        return;
-    }
+        console.log( "Call : endPeerConnection()" );
+        endPeerConnection( rtcPeerConnection );
+    } );
+    
+    // ユーザー名のクリア
+    g_elementTextUserName.value = "";
 
-    // RTCPeerConnectionオブジェクトの作成
-    console.log( "Call : createPeerConnection()" );
-    let rtcPeerConnection = createPeerConnection( g_elementVideoLocal.srcObject );
-    g_rtcPeerConnection = rtcPeerConnection;    // グローバル変数に設定
-
-    // OfferSDPの作成
-    createOfferSDP( rtcPeerConnection );
+    // 画面の切り替え
+    g_elementDivChatScreen.style.display = "none";  // チャット画面の非表示
+    g_elementDivJoinScreen.style.display = "flex";  // 参加画面の表示
 }
 
 // ↑↑↑UIから呼ばれる関数↑↑↑
@@ -243,12 +277,21 @@ g_socket.on(
         console.log( "- type : ", objData.type );
         console.log( "- data : ", objData.data );
 
-        if( "offer" === objData.type )
-        {
-            // onclickButton_SetOfferSDPandCreateAnswerSDP()と同様の処理
-            // 設定するOffserSDPとして、テキストエリアのデータではなく、受信したデータを使用する。
+        // 送信元のSocketID
+        let strRemoteSocketID = objData.from;
+        console.log( "- from : ", objData.from );
 
-            if( g_rtcPeerConnection )
+        if( !g_elementTextUserName.value )
+        {   // 自身がまだ参加していないときは、"signaling"イベントを無視。
+            console.log( "Ignore 'signaling' event because I haven't join yet." );
+            return;
+        }
+
+        if( "join" === objData.type )
+        {
+            // onclickButton_CreateOfferSDP()、onclickButton_SendOfferSDP()と同様の処理
+
+            if( g_mapRtcPeerConnection.get( strRemoteSocketID ) )
             {   // 既にコネクションオブジェクトあり
                 alert( "Connection object already exists." );
                 return;
@@ -256,19 +299,54 @@ g_socket.on(
 
             // RTCPeerConnectionオブジェクトの作成
             console.log( "Call : createPeerConnection()" );
-            let rtcPeerConnection = createPeerConnection( g_elementVideoLocal.srcObject );
-            g_rtcPeerConnection = rtcPeerConnection;    // グローバル変数に設定
+            let rtcPeerConnection = createPeerConnection( g_elementVideoLocal.srcObject, strRemoteSocketID );
+            g_mapRtcPeerConnection.set( strRemoteSocketID, rtcPeerConnection );    // グローバル変数に設定
+
+            // DataChannelの作成
+            let datachannel = rtcPeerConnection.createDataChannel( "datachannel" );
+            // DataChannelオブジェクトをRTCPeerConnectionオブジェクトのメンバーに追加。
+            rtcPeerConnection.datachannel = datachannel;
+            // DataChannelオブジェクトのイベントハンドラの構築
+            console.log( "Call : setupDataChannelEventHandler()" );
+            setupDataChannelEventHandler( rtcPeerConnection );
+
+            // OfferSDPの作成
+            console.log( "Call : createOfferSDP()" );
+            createOfferSDP( rtcPeerConnection );
+        }
+        else if( "offer" === objData.type )
+        {
+            // onclickButton_SetOfferSDPandCreateAnswerSDP()と同様の処理
+            // 設定するOffserSDPとして、テキストエリアのデータではなく、受信したデータを使用する。
+
+            if( g_mapRtcPeerConnection.get( strRemoteSocketID ) )
+            {   // 既にコネクションオブジェクトあり
+                alert( "Connection object already exists." );
+                return;
+            }
+
+            // RTCPeerConnectionオブジェクトの作成
+            console.log( "Call : createPeerConnection()" );
+            let rtcPeerConnection = createPeerConnection( g_elementVideoLocal.srcObject, strRemoteSocketID );
+            g_mapRtcPeerConnection.set( strRemoteSocketID, rtcPeerConnection );    // グローバル変数に設定
 
             // OfferSDPの設定とAnswerSDPの作成
             console.log( "Call : setOfferSDP_and_createAnswerSDP()" );
             setOfferSDP_and_createAnswerSDP( rtcPeerConnection, objData.data );   // 受信したSDPオブジェクトを渡す。
+
+            // リモートユーザー名の設定
+            //g_elementTextRemoteUserName.value = objData.username;
+            // リモート情報表示用のHTML要素の追加
+            appendRemoteInfoElement( strRemoteSocketID, objData.username );
         }
         else if( "answer" === objData.type )
         {
             // onclickButton_SetAnswerSDPthenChatStarts()と同様の処理
             // 設定するAnswerSDPとして、テキストエリアのデータではなく、受信したデータを使用する。
 
-            if( !g_rtcPeerConnection )
+            let rtcPeerConnection = g_mapRtcPeerConnection.get( strRemoteSocketID );
+            
+            if( !rtcPeerConnection )
             {   // コネクションオブジェクトがない
                 alert( "Connection object does not exist." );
                 return;
@@ -276,7 +354,29 @@ g_socket.on(
 
             // AnswerSDPの設定
             console.log( "Call : setAnswerSDP()" );
-            setAnswerSDP( g_rtcPeerConnection, objData.data );   // 受信したSDPオブジェクトを渡す。
+            setAnswerSDP( rtcPeerConnection, objData.data );   // 受信したSDPオブジェクトを渡す。
+
+            // リモートユーザー名の設定
+            //g_elementTextRemoteUserName.value = objData.username;
+            // リモート情報表示用のHTML要素の追加
+            appendRemoteInfoElement( strRemoteSocketID, objData.username );
+        }
+        else if( "candidate" === objData.type )
+        {
+            let rtcPeerConnection = g_mapRtcPeerConnection.get( strRemoteSocketID );
+
+            if( !rtcPeerConnection )
+            {   // コネクションオブジェクトがない
+                alert( "Connection object does not exist." );
+                return;
+            }
+
+            // Vanilla ICEの場合は、ここには来ない。
+            // Trickle ICEの場合は、相手側のICE candidateイベントで送信されたICE candidateを、コネクションに追加する。
+
+            // ICE candidateの追加
+            console.log( "Call : addCandidate()" );
+            addCandidate( rtcPeerConnection, objData.data );   // 受信したICE candidateの追加
         }
         else
         {
@@ -288,16 +388,94 @@ g_socket.on(
 
 // ↓↓↓DataChannel関連の関数↓↓↓
 
+// DataChannelオブジェクトのイベントハンドラの構築
+function setupDataChannelEventHandler( rtcPeerConnection )
+{
+    if( !( "datachannel" in rtcPeerConnection ) )
+    {
+        console.error( "Unexpected : DataChannel does not exist." );
+        return;
+    }
+
+    // message イベントが発生したときのイベントハンドラ
+    rtcPeerConnection.datachannel.onmessage = ( event ) =>
+    {
+        console.log( "DataChannel Event : message" );
+        let objData = JSON.parse( event.data );
+        console.log( "- type : ", objData.type );
+        console.log( "- data : ", objData.data );
+
+        if( "message" === objData.type )
+        {
+            // 受信メッセージをメッセージテキストエリアへ追加
+            let strMessage = objData.data;
+            g_elementTextareaMessageReceived.value = strMessage + "\n" + g_elementTextareaMessageReceived.value; // 一番上に追加
+            //g_elementTextareaMessageReceived.value += strMessage + "\n";  // 一番下に追加
+        }
+        else if( "offer" === objData.type )
+        {
+            // 受信したOfferSDPの設定とAnswerSDPの作成
+            console.log( "Call : setOfferSDP_and_createAnswerSDP()" );
+            setOfferSDP_and_createAnswerSDP( rtcPeerConnection, objData.data );
+        }
+        else if( "answer" === objData.type )
+        {
+            // 受信したAnswerSDPの設定
+            console.log( "Call : setAnswerSDP()" );
+            setAnswerSDP( rtcPeerConnection, objData.data );
+        }
+        else if( "candidate" === objData.type )
+        {
+            // 受信したICE candidateの追加
+            console.log( "Call : addCandidate()" );
+            addCandidate( rtcPeerConnection, objData.data );
+        }
+        else if( "leave" === objData.type )
+        {
+            console.log( "Call : endPeerConnection()" );
+            endPeerConnection( rtcPeerConnection );
+        }
+    }
+}
+
+// DataChannelが開いているか
+function isDataChannelOpen( rtcPeerConnection )
+{
+    if( !( "datachannel" in rtcPeerConnection ) )
+    {   // datachannelメンバーが存在しない
+        return false;
+    }
+    if( !rtcPeerConnection.datachannel )
+    {   // datachannelメンバーがnull
+        return false;
+    }
+    if( "open" !== rtcPeerConnection.datachannel.readyState )
+    {   // datachannelメンバーはあるが、"open"でない。
+        return false;
+    }
+    // DataCchannelが開いている
+    return true;
+}
+
 // ↑↑↑DataChannel関連の関数↑↑↑
 
 // ↓↓↓RTCPeerConnection関連の関数↓↓↓
 
 // RTCPeerConnectionオブジェクトの作成
-function createPeerConnection( stream )
+function createPeerConnection( stream, strRemoteSocketID )
 {
     // RTCPeerConnectionオブジェクトの生成
-    let config = { "iceServers": [] };
+    let config = {
+        "iceServers": [
+            { "urls": "stun:stun.l.google.com:19302" },
+            { "urls": "stun:stun1.l.google.com:19302" },
+            { "urls": "stun:stun2.l.google.com:19302" },
+        ]
+    };
     let rtcPeerConnection = new RTCPeerConnection( config );
+
+    // チャット相手のSocketIDをRTCPeerConnectionオブジェクトのメンバーに追加。
+    rtcPeerConnection.strRemoteSocketID = strRemoteSocketID;
 
     // RTCPeerConnectionオブジェクトのイベントハンドラの構築
     setupRTCPeerConnectionEventHandler( rtcPeerConnection );
@@ -320,6 +498,35 @@ function createPeerConnection( stream )
     return rtcPeerConnection;
 }
 
+// コネクションの終了処理
+function endPeerConnection( rtcPeerConnection )
+{
+    // リモート映像の停止
+    //console.log( "Call : setStreamToElement( Video_Remote, null )" );
+    //setStreamToElement( g_elementVideoRemote, null );
+    // リモート音声の停止
+    //console.log( "Call : setStreamToElement( Audio_Remote, null )" );
+    //setStreamToElement( g_elementAudioRemote, null );
+    // リモート映像表示用のHTML要素の削除
+    console.log( "Call : removeRemoteVideoElement()" );
+    removeRemoteInfoElement( rtcPeerConnection.strRemoteSocketID );
+
+    // DataChannelの終了
+    if( "datachannel" in rtcPeerConnection )
+    {
+        rtcPeerConnection.datachannel.close();
+        rtcPeerConnection.datachannel = null;
+    }
+
+    // グローバル変数のクリア
+    //g_rtcPeerConnection = null;
+    // グローバル変数Mapから削除
+    g_mapRtcPeerConnection.delete( rtcPeerConnection.strRemoteSocketID );
+
+    // ピアコネクションの終了
+    rtcPeerConnection.close();
+}
+
 // RTCPeerConnectionオブジェクトのイベントハンドラの構築
 function setupRTCPeerConnectionEventHandler( rtcPeerConnection )
 {
@@ -333,6 +540,18 @@ function setupRTCPeerConnectionEventHandler( rtcPeerConnection )
     rtcPeerConnection.onnegotiationneeded = () =>
     {
         console.log( "Event : Negotiation needed" );
+
+        if( !isDataChannelOpen( rtcPeerConnection ) )
+        {   // チャット前
+            // OfferSDPの作成は、ユーザーイベントから直接呼び出すので、
+            // Negotiation Neededイベントは無視する。
+        }
+        else
+        {   // チャット中
+            // OfferSDPを作成し、DataChannelを通して相手に直接送信
+            console.log( "Call : createOfferSDP()" );
+            createOfferSDP( rtcPeerConnection );
+        }
     };
 
     // ICE candidate イベントが発生したときのイベントハンドラ
@@ -350,6 +569,19 @@ function setupRTCPeerConnectionEventHandler( rtcPeerConnection )
 
             // Vanilla ICEの場合は、何もしない
             // Trickle ICEの場合は、ICE candidateを相手に送る
+
+            if( !isDataChannelOpen( rtcPeerConnection ) )
+            {   // チャット前
+                // ICE candidateをサーバーを経由して相手に送信
+                console.log( "- Send ICE candidate to server" );
+                g_socket.emit( "signaling", { to: rtcPeerConnection.strRemoteSocketID, type: "candidate", data: event.candidate } );
+            }
+            else
+            {   // チャット中
+                // ICE candidateをDataChannelを通して相手に直接送信
+                console.log( "- Send ICE candidate through DataChannel" );
+                rtcPeerConnection.datachannel.send( JSON.stringify( { type: "candidate", data: event.candidate } ) );
+            }
         }
         else
         {   // ICE candiateがない = ICE candidate の収集終了。
@@ -381,27 +613,15 @@ function setupRTCPeerConnectionEventHandler( rtcPeerConnection )
             
             if( "offer" === rtcPeerConnection.localDescription.type )
             {
-                // Offer側のOfferSDP用のテキストエリアに貼付
-                //console.log( "- Set OfferSDP in textarea" );
-                //g_elementTextareaOfferSideOfferSDP.value = rtcPeerConnection.localDescription.sdp;
-                //g_elementTextareaOfferSideOfferSDP.focus();
-                //g_elementTextareaOfferSideOfferSDP.select();
-
                 // OfferSDPをサーバーに送信
-                console.log( "- Send OfferSDP to server" );
-                g_socket.emit( "signaling", { type: "offer", data: rtcPeerConnection.localDescription } );
+                //console.log( "- Send OfferSDP to server" );
+                //g_socket.emit( "signaling", { type: "offer", data: rtcPeerConnection.localDescription } );
             }
             else if( "answer" === rtcPeerConnection.localDescription.type )
             {
-                // Answer側のAnswerSDP用のテキストエリアに貼付
-                //console.log( "- Set AnswerSDP in textarea" );
-                //g_elementTextareaAnswerSideAnswerSDP.value = rtcPeerConnection.localDescription.sdp;
-                //g_elementTextareaAnswerSideAnswerSDP.focus();
-                //g_elementTextareaAnswerSideAnswerSDP.select();
-
                 // AnswerSDPをサーバーに送信
-                console.log( "- Send AnswerSDP to server" );
-                g_socket.emit( "signaling", { type: "answer", data: rtcPeerConnection.localDescription } );
+                //console.log( "- Send AnswerSDP to server" );
+                //g_socket.emit( "signaling", { type: "answer", data: rtcPeerConnection.localDescription } );
             }
             else
             {
@@ -452,6 +672,14 @@ function setupRTCPeerConnectionEventHandler( rtcPeerConnection )
         //                  他のトランスポートのどれも「failed」、「connecting」、「checking」の状態ではない。
         // "failed"       : 接続の1つ以上のICEトランスポートが「失敗」状態になっている。
         // see : https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/connectionState
+
+        if( "failed" === rtcPeerConnection.connectionState )
+        {   // 「ビデオチャット相手との通信が切断」が「しばらく」続き、通信が復帰しないとき、Connection state「failed」となる。
+            // - 「ビデオチャット相手との通信が切断」になると「すぐに」Connection state「failed」となるわけではない。
+            // - 相手のチャット離脱後、速やかにコネクション終了処理を行うためには、離脱側からチャット離脱メッセージを送信し、受信側でコネクション終了処理を行うようにする。
+            console.log( "Call : endPeerConnection()" );
+            endPeerConnection( rtcPeerConnection );
+        }
     };
 
     // Track イベントが発生したときのイベントハンドラ
@@ -471,18 +699,75 @@ function setupRTCPeerConnectionEventHandler( rtcPeerConnection )
         let track = event.track;
         if( "video" === track.kind )
         {
+            let elementVideoRemote = getRemoteVideoElement( rtcPeerConnection.strRemoteSocketID );
             console.log( "Call : setStreamToElement( Video_Remote, stream )" );
-            setStreamToElement( g_elementVideoRemote, stream );
+            setStreamToElement( elementVideoRemote, stream );
         }
         else if( "audio" === track.kind )
         {
+            let elementAudioRemote = getRemoteAudioElement( rtcPeerConnection.strRemoteSocketID );
             console.log( "Call : setStreamToElement( Audio_Remote, stream )" );
-            setStreamToElement( g_elementAudioRemote, stream );
+            setStreamToElement( elementAudioRemote, stream );
         }
         else
         {
             console.error( "Unexpected : Unknown track kind : ", track.kind );
         }
+
+        // 相手のメディアストリームがRTCPeerConnectionから削除されたときのイベントハンドラ
+        // - 相手の RTCPeerConnection.removeTrack( sender );
+        //   の結果として、streamの「removetrack」イベントが発生する。
+        // - 古くは、rtcPeerConnection.onremovetrack に設定していたが、廃止された。
+        //   現在は、stream.onremovetrack に設定する。
+        stream.onremovetrack = ( evt ) =>
+        {
+            console.log( "Stream Event : remove track" );
+            console.log( "- stream", stream );
+            console.log( "- track", evt.track );
+
+            // HTML要素のメディアストリームの解除
+            let trackRemove = evt.track;
+            if( "video" === trackRemove.kind )
+            {
+                let elementVideoRemote = getRemoteVideoElement( rtcPeerConnection.strRemoteSocketID );
+                console.log( "Call : setStreamToElement( Video_Remote, null )" );
+                setStreamToElement( elementVideoRemote, null );
+            }
+            else if( "audio" === trackRemove.kind )
+            {
+                let elementAudioRemote = getRemoteAudioElement( rtcPeerConnection.strRemoteSocketID );
+                console.log( "Call : setStreamToElement( Audio_Remote, null )" );
+                setStreamToElement( elementAudioRemote, null );
+            }
+            else
+            {
+                console.error( "Unexpected : Unknown track kind : ", trackRemove.kind );
+            }
+        };
+    };
+
+    // Data channel イベントが発生したときのイベントハンドラ
+    // - このイベントは、createDataChannel() を呼び出すリモートピアによって
+    //   RTCDataChannelが接続に追加されたときに送信されます。
+    //   see : https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/ondatachannel
+    rtcPeerConnection.ondatachannel = ( event ) =>
+    {
+        console.log( "Event : Data channel" );
+
+        // DataChannelオブジェクトをRTCPeerConnectionオブジェクトのメンバーに追加。
+        rtcPeerConnection.datachannel = event.channel;
+        // DataChannelオブジェクトのイベントハンドラの構築
+        console.log( "Call : setupDataChannelEventHandler()" );
+        setupDataChannelEventHandler( rtcPeerConnection );
+        
+        // オファーをされた側として、OfferSDPを作成し、DataChannelを通して相手に直接送信
+        // （オファーした側でカメラや（orマイク）をOnにしなかった場合、
+        //   オファーされた側でカメラ（orマイク）をOnにしても、
+        //   カメラ映像（orマイク音声）の通信ストリームは作成されず、カメラ映像（マイク音声）は相手に送信されない。
+        //   オファーされた側として、OfferSDPを作成、送信することで、
+        //   オファーした側、オファーされた側、双方で必要な通信ストリームが整う。）
+        console.log( "Call : createOfferSDP()" );
+        createOfferSDP( rtcPeerConnection );
     };
 }
 
@@ -502,6 +787,20 @@ function createOfferSDP( rtcPeerConnection )
         {
             // Vanilla ICEの場合は、まだSDPを相手に送らない
             // Trickle ICEの場合は、初期SDPを相手に送る
+
+            if( !isDataChannelOpen( rtcPeerConnection ) )
+            {   // チャット前
+                // 初期OfferSDPをサーバーを経由して相手に送信
+                console.log( "- Send OfferSDP to server" );
+                g_socket.emit( "signaling", { to: rtcPeerConnection.strRemoteSocketID, type: "offer",
+                                              data: rtcPeerConnection.localDescription, username: g_elementTextUserName.value } );
+            }
+            else
+            {   // チャット中
+                // 初期OfferSDPをDataChannelを通して相手に直接送信
+                console.log( "- Send OfferSDP through DataChannel" );
+                rtcPeerConnection.datachannel.send( JSON.stringify( { type: "offer", data: rtcPeerConnection.localDescription } ) );
+            }
         } )
         .catch( ( error ) =>
         {
@@ -530,6 +829,20 @@ function setOfferSDP_and_createAnswerSDP( rtcPeerConnection, sessionDescription 
         {
             // Vanilla ICEの場合は、まだSDPを相手に送らない
             // Trickle ICEの場合は、初期SDPを相手に送る
+
+            if( !isDataChannelOpen( rtcPeerConnection ) )
+            {   // チャット前
+                // 初期AnswerSDPをサーバーを経由して相手に送信
+                console.log( "- Send AnswerSDP to server" );
+                g_socket.emit( "signaling", { to: rtcPeerConnection.strRemoteSocketID, type: "answer",
+                                              data: rtcPeerConnection.localDescription, username: g_elementTextUserName.value } );
+            }
+            else
+            {   // チャット中
+                // 初期AnswerSDPをDataChannelを通して相手に直接送信
+                console.log( "- Send AnswerSDP through DataChannel" );
+                rtcPeerConnection.datachannel.send( JSON.stringify( { type: "answer", data: rtcPeerConnection.localDescription } ) );
+            }
         } )
         .catch( ( error ) =>
         {
@@ -542,6 +855,17 @@ function setAnswerSDP( rtcPeerConnection, sessionDescription )
 {
     console.log( "Call : rtcPeerConnection.setRemoteDescription()" );
     rtcPeerConnection.setRemoteDescription( sessionDescription )
+        .catch( ( error ) =>
+        {
+            console.error( "Error : ", error );
+        } );
+}
+
+// ICE candidateの追加
+function addCandidate( rtcPeerConnection, candidate )
+{
+    console.log( "Call : rtcPeerConnection.addIceCandidate()" );
+    rtcPeerConnection.addIceCandidate( candidate )
         .catch( ( error ) =>
         {
             console.error( "Error : ", error );
@@ -584,6 +908,82 @@ function setStreamToElement( elementMedia, stream )
     {
         console.error( "Unexpected : Unknown ElementTagName : ", elementMedia.tagName );
     }
+}
+
+// リモート情報表示用のHTML要素の追加
+function appendRemoteInfoElement( strRemoteSocketID, strUserName )
+{
+    // <div border="1 solid #000000"><input type="text" id="text_remote_username" readonly="readonly"><br /><video id="video_remote" width="320" height="240" style="border: 1px solid black;"></video><audio id="audio_remote"></audio></div>
+
+    // IDの作成
+    let strElementTextID = "text_" + strRemoteSocketID;
+    let strElementVideoID = "video_" + strRemoteSocketID;
+    let strElementAudioID = "audio_" + strRemoteSocketID;
+    let strElementTableID = "table_" + strRemoteSocketID;
+
+    // text HTML要素の作成
+    let elementText = document.createElement( "input" );
+    elementText.id = strElementTextID;
+    elementText.type = "text";
+    elementText.readOnly = "readonly";
+    elementText.value = strUserName;
+
+    // video HTML要素の作成
+    let elementVideo = document.createElement( "video" );
+    elementVideo.id = strElementVideoID;
+    elementVideo.width = "320";
+    elementVideo.height = "240";
+    elementVideo.style.border = "1px solid black";
+    elementVideo.autoplay = true;
+
+    // audio HTML要素の作成
+    let elementAudio = document.createElement( "audio" );
+    elementAudio.id = strElementAudioID;
+    elementAudio.autoplay = true;
+
+    // div HTML要素の作成
+    let elementDiv = document.createElement( "div" );
+    elementDiv.id = strElementTableID;
+    elementDiv.border = "1px solid black";
+
+    // 要素の配置
+    elementDiv.appendChild( elementText );    // ユーザー名
+    elementDiv.appendChild( document.createElement( "br" ) ); // 改行
+    elementDiv.appendChild( elementVideo );   // Video
+    elementDiv.appendChild( elementAudio );   // Audio
+    g_elementDivUserInfo.appendChild( elementDiv );
+}
+
+// リモート映像表示用のHTML要素の取得
+function getRemoteVideoElement( strRemoteSocketID )
+{
+    let strElementVideoID = "video_" + strRemoteSocketID;
+
+    return document.getElementById( strElementVideoID );
+}
+
+// リモート音声用のHTML要素の取得
+function getRemoteAudioElement( strRemoteSocketID )
+{
+    let strElementAudioID = "audio_" + strRemoteSocketID;
+
+    return document.getElementById( strElementAudioID );
+}
+
+// リモート情報表示用のHTML要素の削除
+function removeRemoteInfoElement( strRemoteSocketID )
+{
+    let strElementTableID = "table_" + strRemoteSocketID;
+
+    let elementTable = document.getElementById( strElementTableID );
+
+    if( !elementTable )
+    {
+        console.error( "Unexpected : Remote Video Element is not exist. RemoteSocketID = ", strRemoteSocketID );
+    }
+
+    // 要素の削除
+    g_elementDivUserInfo.removeChild( elementTable );
 }
 
 // ↑↑↑その他の内部関数↑↑↑
