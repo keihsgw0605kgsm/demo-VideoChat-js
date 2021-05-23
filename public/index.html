@@ -1,0 +1,64 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>My Video Chat</title>
+    <style type="text/css">
+        input:read-only, textarea:read-only {
+            background-color: #CCC;
+        }
+    </style>
+</head>
+<body>
+    <h1>My Video Chat</h1>
+    <input type="checkbox" id="checkbox_camera" onclick="onclickCheckbox_CameraMicrophone()">Camera
+    <input type="checkbox" id="checkbox_microphone" onclick="onclickCheckbox_CameraMicrophone()">Microphone
+    <br />
+    <video id="video_local" width="320" height="240" style="border: 1px solid black;" autoplay></video>
+    <video id="video_remote" width="320" height="240" style="border: 1px solid black;" autoplay></video><audio id="audio_remote" autoplay></audio>
+
+    <!--
+    <table border="1">
+        <tbody>
+            <tr>
+                <td></td>
+                <td>Offer side</td>
+                <td>Answer side</td>
+            </tr>
+            <tr>
+                <td>OfferSDP</td>
+                <td>
+                    <button onclick="onclickButton_CreateOfferSDP()">Create OfferSDP.</button>
+                    <br>
+                    <textarea id="textarea_offerside_offsersdp" rows="10" cols="40" readonly="readonly"></textarea>
+                </td>
+                <td>
+                    <br>
+                    <textarea id="textarea_answerside_offsersdp" rows="10" cols="40"></textarea>
+                </td>
+            </tr>
+            <tr>
+                <td>AnswerSDP</td>
+                <td>
+                    <br>
+                    <textarea id="textarea_offerside_answersdp" rows="10" cols="40"></textarea><br>
+                    <button onclick="onclickButton_SetAnswerSDPthenChatStarts()">Set AnswerSDP. Then the chat starts.</button>
+                </td>
+                <td>
+                    <button onclick="onclickButton_SetOfferSDPandCreateAnswerSDP()">Set OfferSDP and Create AnswerSDP.</button>
+                    <br>
+                    <textarea id="textarea_answerside_answersdp" rows="10" cols="40" readonly="readonly"></textarea><br>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    -->
+
+    <br />
+    <button onclick="onclickButton_SendOfferSDP()">Send OfferSDP.</button>
+
+    <!-- Script -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="./client.js"></script>
+</body>
+</html>
