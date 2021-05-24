@@ -843,6 +843,8 @@ function appendRemoteInfoElement( strRemoteSocketID, strUserName ) {
     elementVideo.height = "292";
     elementVideo.style.border = "1px solid black";
     elementVideo.style.backgroundColor = "#000000";
+    elementVideo.style.marginLeft = "10px";
+    elementVideo.style.marginRight = "10px";
     elementVideo.autoplay = true;
 
     // audio HTML要素の作成
