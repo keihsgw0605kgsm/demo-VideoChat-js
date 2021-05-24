@@ -53,3 +53,9 @@ html {
     border: 1px solid black;
 }*/
 
+.center {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
