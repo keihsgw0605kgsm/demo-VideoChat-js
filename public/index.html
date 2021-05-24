@@ -24,7 +24,7 @@
                 <input type="checkbox" id="checkbox_camera" onclick="onclickCheckbox_CameraMicrophone()">Camera
                 <input type="checkbox" id="checkbox_microphone" onclick="onclickCheckbox_CameraMicrophone()">Microphone
                 <br />
-            <main class="center-display">
+            <div class="center-display">
                 <div id="div_userinfo" style="display: flex; flex-wrap: wrap">
                     <div border="1px solid black">
                         <input type="text" id="text_username" readonly="readonly"><br />
@@ -32,7 +32,7 @@
                     </div>
                     <!-- <div border="1px solid black"><input type="text" id="text_remote_username" readonly="readonly"><br /><video id="video_remote" width="320" height="240" style="border: 1px solid black;" autoplay></video><audio id="audio_remote" autoplay></audio></div> -->
                 </div>
-            </main>
+            </div>
 
             <!-- エンターキーによるボタン押下を行うために、<button>ではなく<form>と<input type="submit">を使用。
             ボタン押下(=submit)時にページリロードが行われないように、onsubmitの設定の最後に"return false;"を追加。
