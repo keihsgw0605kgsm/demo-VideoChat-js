@@ -57,6 +57,9 @@ html {
     position: absolute;
     top: 0;
     bottom: 0;
+
+    width: 20px;
+    height: 10px;
 }
 
 #video_local {
