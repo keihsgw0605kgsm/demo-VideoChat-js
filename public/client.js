@@ -856,10 +856,11 @@ function appendRemoteInfoElement( strRemoteSocketID, strUserName ) {
 
     // 要素の配置
     elementDiv.appendChild( elementText );    // ユーザー名
-    //elementDiv.appendChild( document.createElement( "br" ) ); // 改行
+    elementDiv.appendChild( document.createElement( "br" ) ); // 改行
     elementDiv.appendChild( elementVideo );   // Video
     elementDiv.appendChild( elementAudio );   // Audio
     g_elementDivUserInfo.appendChild( elementDiv );
+    elementDiv.appendChild( document.createElement( "br" ) ); // 改行
 }
 
 // リモート映像表示用のHTML要素の取得
