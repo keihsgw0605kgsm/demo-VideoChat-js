@@ -49,6 +49,13 @@ html {
     flex-wrap: wrap;
 }*/
 
+#text_username {
+    width: 80px;
+    height: 20px;
+    font-size: 15px;
+    margin: 10px 0px 0px 10px;
+}
+
 #video_local {
     border: 1px solid black;
     background-color: #000000;
