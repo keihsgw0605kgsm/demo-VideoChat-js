@@ -49,24 +49,10 @@ html {
     flex-wrap: wrap;
 }*/
 
-.box {
-    position: relative;
-}
-
-#text_username {
-    position: absolute;
-    top: 0;
-    left: 0;
-
-    width: 80px;
-    height: 20px;
-    font-size: 15px;
-}
-
 #video_local {
     border: 1px solid black;
     background-color: #000000;
-    /*margin: 10px 10px 10px 10px;*/
+    margin: 0px 10px 10px 10px;
 }
 
 .display-participants {

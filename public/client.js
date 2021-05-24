@@ -834,6 +834,7 @@ function appendRemoteInfoElement( strRemoteSocketID, strUserName ) {
     elementText.id = strElementTextID;
     elementText.type = "text";
     elementText.readOnly = "readonly";
+    elementText.style.margin = "10px 0px 0px 10px"
     elementText.value = strUserName;
 
     // video HTML要素の作成
@@ -843,7 +844,7 @@ function appendRemoteInfoElement( strRemoteSocketID, strUserName ) {
     elementVideo.height = "292";
     elementVideo.style.border = "1px solid black";
     elementVideo.style.backgroundColor = "#000000";
-    elementVideo.style.margin = "10px 10px 10px 10px"
+    elementVideo.style.margin = "0px 10px 10px 10px"
     elementVideo.autoplay = true;
 
     // audio HTML要素の作成
