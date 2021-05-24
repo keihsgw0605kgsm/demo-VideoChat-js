@@ -53,7 +53,7 @@ html {
     position: relative;
 }
 
-.box #text_username {
+#text_username {
     position: absolute;
     top: 0;
     bottom: 0;
