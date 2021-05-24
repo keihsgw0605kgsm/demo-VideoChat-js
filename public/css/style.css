@@ -56,10 +56,11 @@ html {
 #text_username {
     position: absolute;
     top: 0;
-    bottom: 0;
+    left: 0;
 
-    width: 20px;
-    height: 10px;
+    width: 80px;
+    height: 20px;
+    font-size: 15px;
 }
 
 #video_local {
