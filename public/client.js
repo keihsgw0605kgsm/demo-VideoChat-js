@@ -835,13 +835,16 @@ function appendRemoteInfoElement( strRemoteSocketID, strUserName ) {
     elementText.type = "text";
     elementText.readOnly = "readonly";
     elementText.style.margin = "10px 0px 0px 10px"
+    elementText.style.width = "160px";
+    elementText.style.height = "15px";
+    elementText.style.fontSize = "10px";
     elementText.value = strUserName;
 
     // video HTML要素の作成
     let elementVideo = document.createElement( "video" );
     elementVideo.id = strElementVideoID;
-    elementVideo.width = "528";
-    elementVideo.height = "292";
+    elementVideo.width = "640";
+    elementVideo.height = "360";
     elementVideo.style.border = "1px solid black";
     elementVideo.style.backgroundColor = "#000000";
     elementVideo.style.margin = "0px 10px 10px 10px"
