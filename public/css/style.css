@@ -49,6 +49,16 @@ html {
     flex-wrap: wrap;
 }*/
 
+.box {
+    position: relative;
+}
+
+.box #text_username {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+}
+
 #video_local {
     border: 1px solid black;
     background-color: #000000;
