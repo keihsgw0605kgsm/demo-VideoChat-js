@@ -49,9 +49,11 @@ html {
     flex-wrap: wrap;
 }*/
 
-/*#video_local {
+#video_local {
     border: 1px solid black;
-}*/
+    background-color: #000000;
+    margin: 10px 10px 10px 10px;
+}
 
 .display-participants {
     margin-top: 5%;
