@@ -44,10 +44,10 @@ html {
     display: none;
 }
 
-#div_user_info {
+/*#div_user_info {
     display: flex;
     flex-wrap: wrap;
-}
+}*/
 
 #video_local {
     border: 1px solid black;
