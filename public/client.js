@@ -839,8 +839,8 @@ function appendRemoteInfoElement( strRemoteSocketID, strUserName ) {
     // video HTML要素の作成
     let elementVideo = document.createElement( "video" );
     elementVideo.id = strElementVideoID;
-    elementVideo.width = "320";
-    elementVideo.height = "240";
+    elementVideo.width = "528";
+    elementVideo.height = "292";
     elementVideo.style.border = "1px solid black";
     elementVideo.autoplay = true;
 
