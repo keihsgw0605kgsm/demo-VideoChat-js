@@ -168,10 +168,10 @@ function onclickCheckbox_CameraMicrophone(){
             });
         })
         //.then(() => startRecording(g_elementVideoLocal.captureStream(), recordingTimeMS))
-        .then(recordedChunks => {
+        /*.then(recordedChunks => {
             let recordedBlob = new Blob(recordedChunks, {type: "video/webm"});
             g_elementBtnLeave.download = "RecordedVideo.webm";
-        })
+        })*/
 
         // HTML要素へのメディアストリームの設定
         console.log( "Call : setStreamToElement( Video_Local, stream )" );
