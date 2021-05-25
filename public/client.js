@@ -31,7 +31,7 @@ const g_socket = io.connect();
 
 const recordingTimeMS = 5000;
 
-console.log("const OK");
+//console.log("const OK");
 
 // ↑↑↑グローバル変数↑↑↑
 
