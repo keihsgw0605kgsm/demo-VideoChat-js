@@ -18,6 +18,8 @@ const g_elementVideoLocal = document.getElementById( "video_local" );
 //const g_elementVideoRemote = document.getElementById( "video_remote" );
 //const g_elementAudioRemote = document.getElementById( "audio_remote" );
 
+const g_elementBtnLeave = docement.getElementById("btn_leave");
+
 //const g_elementTextMessageForSend = document.getElementById( "text_message_for_send" );
 //const g_elementTextareaMessageReceived = document.getElementById( "textarea_message_received" );
 
@@ -26,6 +28,8 @@ let g_mapRtcPeerConnection = new Map();
 
 // クライアントからサーバーへの接続要求
 const g_socket = io.connect();
+
+const recordingTimeMS = 5000;
 
 // ↑↑↑グローバル変数↑↑↑
 
@@ -151,19 +155,27 @@ function onclickCheckbox_CameraMicrophone(){
     //   現在は、navigator.mediaDevices.getUserMedia() が新たに用意され、これを使用する。
     console.log( "Call : navigator.mediaDevices.getUserMedia( video=%s, audio=%s )", bCamera_new, bMicrophone_new );
     //カメラも音声も両方もしくは片方ON
+    //navigator.mediaDevices.getUserMedia()でカメラを<video>と同期
     navigator.mediaDevices.getUserMedia( { video: bCamera_new, audio: bMicrophone_new } ).then( ( stream ) => {
+        g_elementBtnLeave.href = stream;
         g_mapRtcPeerConnection.forEach( ( rtcPeerConnection ) => {
             // コネクションオブジェクトに対してTrack追加を行う。
             stream.getTracks().forEach( ( track ) => {
                 rtcPeerConnection.addTrack( track, stream );
                 // addTrack()の結果として、「Negotiation needed」イベントが発生する。
             });
-        });
+        })
+        .then(() => startRecording(g_elementVideoLocal.captureStream(), recordingTimeMS))
+        .then(recordedChunks => {
+            let recordedBlob = new Blob(recordedChunks, {type: "video/webm"});
+            g_elementBtnLeave.download = "RecordedVideo.webm";
+        })
 
         // HTML要素へのメディアストリームの設定
         console.log( "Call : setStreamToElement( Video_Local, stream )" );
         setStreamToElement( g_elementVideoLocal, stream );
-    }).catch( ( error ) => {
+    })
+    .catch( ( error ) => {
         // メディアストリームの取得に失敗⇒古いメディアストリームのまま。チェックボックスの状態を戻す。
         console.error( "Error : ", error );
         alert( "Could not start Camera." );
@@ -894,6 +906,39 @@ function removeRemoteInfoElement( strRemoteSocketID ) {
 
     // 要素の削除
     g_elementDivUserInfo.removeChild( elementTable );
+}
+
+function wait(delayInMS) {
+    return new Promise(resolve => setTimeout(resolve, delayInMS));
+}
+
+//録画開始
+function startRecording(stream, lengthInMS) {
+    let recorder = new MediaRecorder(stream);
+    let data = [];
+
+    recorder.ondataavailable = event => data.push(event.data);
+    recorder.start();
+    console.log(recorder.state + " for " + (lengthInMS/1000) + " seconds...");
+
+    let stopped = new Promise((resolve, reject) => {
+        recorder.onstop = resolve;
+        recorder.onerror = event => reject(event.name);
+    });
+
+    let recorded = wait(lengthInMS).then(
+        () => recorder.state == "recording" && recorder.stop()
+    );
+
+    return Promise.all([
+        stopped,
+        recorded
+    ]).then(() => data);
+}
+
+//録画終了(『Leave Chat』押した際のダウンロード前に呼び出される必要がある)
+function stopRecording(stream) {
+    stream.getTracks().forEach(track => track.stop());
 }
 
 // ↑↑↑その他の内部関数↑↑↑
