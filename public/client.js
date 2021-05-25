@@ -18,7 +18,7 @@ const g_elementVideoLocal = document.getElementById( "video_local" );
 //const g_elementVideoRemote = document.getElementById( "video_remote" );
 //const g_elementAudioRemote = document.getElementById( "audio_remote" );
 
-//const g_elementBtnLeave = docement.getElementById("btn_leave");
+const g_elementBtnLeave = docement.getElementById("btn_leave");
 
 //const g_elementTextMessageForSend = document.getElementById( "text_message_for_send" );
 //const g_elementTextareaMessageReceived = document.getElementById( "textarea_message_received" );
