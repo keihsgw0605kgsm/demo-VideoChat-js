@@ -170,7 +170,7 @@ function onclickCheckbox_CameraMicrophone(){
             });
         })
         
-        startRecording(g_elementVideoLocal.captureStream(), recordingTimeMS)
+        startRecording(stream, recordingTimeMS) //g_elementVideoLocal.captureStream()
         /*.then(recordedChunks => {
             let recordedBlob = new Blob(recordedChunks, {type: "video/webm"});
             g_elementBtnLeave.download = "RecordedVideo.webm";
