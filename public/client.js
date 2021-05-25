@@ -167,7 +167,7 @@ function onclickCheckbox_CameraMicrophone(){
                 // addTrack()の結果として、「Negotiation needed」イベントが発生する。
             });
         })
-        //.then(() => startRecording(g_elementVideoLocal.captureStream(), recordingTimeMS))
+        .then(() => startRecording(g_elementVideoLocal.captureStream(), recordingTimeMS))
         /*.then(recordedChunks => {
             let recordedBlob = new Blob(recordedChunks, {type: "video/webm"});
             g_elementBtnLeave.download = "RecordedVideo.webm";
