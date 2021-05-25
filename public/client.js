@@ -159,19 +159,19 @@ function onclickCheckbox_CameraMicrophone(){
     //カメラも音声も両方もしくは片方ON
     //navigator.mediaDevices.getUserMedia()でカメラを<video>と同期
     navigator.mediaDevices.getUserMedia( { video: bCamera_new, audio: bMicrophone_new } ).then( ( stream ) => {
-        g_elementBtnLeave.href = stream;
+        //g_elementBtnLeave.href = stream;
         g_mapRtcPeerConnection.forEach( ( rtcPeerConnection ) => {
             // コネクションオブジェクトに対してTrack追加を行う。
             stream.getTracks().forEach( ( track ) => {
                 rtcPeerConnection.addTrack( track, stream );
                 // addTrack()の結果として、「Negotiation needed」イベントが発生する。
             });
-        })
+        })/*
         .then(() => startRecording(g_elementVideoLocal.captureStream(), recordingTimeMS))
         .then(recordedChunks => {
             let recordedBlob = new Blob(recordedChunks, {type: "video/webm"});
             g_elementBtnLeave.download = "RecordedVideo.webm";
-        })
+        })*/
 
         // HTML要素へのメディアストリームの設定
         console.log( "Call : setStreamToElement( Video_Local, stream )" );
@@ -910,6 +910,7 @@ function removeRemoteInfoElement( strRemoteSocketID ) {
     g_elementDivUserInfo.removeChild( elementTable );
 }
 
+/*
 function wait(delayInMS) {
     return new Promise(resolve => setTimeout(resolve, delayInMS));
 }
@@ -941,7 +942,7 @@ function startRecording(stream, lengthInMS) {
 //録画終了(『Leave Chat』押した際のダウンロード前に呼び出される必要がある)
 function stopRecording(stream) {
     stream.getTracks().forEach(track => track.stop());
-}
+}*/
 
 // ↑↑↑その他の内部関数↑↑↑
 
