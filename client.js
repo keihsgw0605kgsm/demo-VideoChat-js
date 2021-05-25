@@ -163,17 +163,17 @@ function onclickCheckbox_CameraMicrophone(){
                 rtcPeerConnection.addTrack( track, stream );
                 // addTrack()の結果として、「Negotiation needed」イベントが発生する。
             });
-        });
+            g_elementBtnLeave.href = stream;
+        })
+        .then(() => startRecording(g_elementVideoLocal.captureStream(), recordingTimeMS))
+        .then(recordedChunks => {
+            let recordedBlob = new Blob(recordedChunks, {type: "video/webm"});
+            g_elementBtnLeave.download = "RecordedVideo.webm";
+        })
 
         // HTML要素へのメディアストリームの設定
         console.log( "Call : setStreamToElement( Video_Local, stream )" );
         setStreamToElement( g_elementVideoLocal, stream );
-        g_elementBtnLeave.href = stream;
-    })
-    .then(() => startRecording(g_elementVideoLocal.captureStream(), recordingTimeMS))
-    .then(recordedChunks => {
-        let recordedBlob = new Blob(recordedChunks, {type: "video/webm"});
-        g_elementBtnLeave.download = "RecordedVideo.webm";
     })
     .catch( ( error ) => {
         // メディアストリームの取得に失敗⇒古いメディアストリームのまま。チェックボックスの状態を戻す。
