@@ -849,7 +849,7 @@ function appendRemoteInfoElement( strRemoteSocketID, strUserName ) {
     elementText.id = strElementTextID;
     elementText.type = "text";
     elementText.readOnly = "readonly";
-    elementText.style.margin = "10px 0px 0px 10px"
+    elementText.style.margin = "0px 0px 0px 10px"
     elementText.style.width = "160px";
     elementText.style.height = "15px";
     elementText.style.fontSize = "10px";
