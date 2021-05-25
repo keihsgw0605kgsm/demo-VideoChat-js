@@ -160,7 +160,7 @@ function onclickCheckbox_CameraMicrophone(){
     //navigator.mediaDevices.getUserMedia()でカメラを<video>と同期
     navigator.mediaDevices.getUserMedia( { video: bCamera_new, audio: bMicrophone_new } ).then( ( stream ) => {
         g_elementBtnLeave.href = stream;
-        g_elementVideoLocal.captureStream = g_elementVideoLocal.captureStream || g_elementVideoLocal.mozCaptureStream;
+        //g_elementVideoLocal.captureStream = g_elementVideoLocal.captureStream || g_elementVideoLocal.mozCaptureStream;
         
         g_mapRtcPeerConnection.forEach( ( rtcPeerConnection ) => {
             // コネクションオブジェクトに対してTrack追加を行う。
@@ -171,10 +171,7 @@ function onclickCheckbox_CameraMicrophone(){
         })
         
         startRecording(stream, recordingTimeMS) //g_elementVideoLocal.captureStream()
-        /*.then(recordedChunks => {
-            let recordedBlob = new Blob(recordedChunks, {type: "video/webm"});
-            g_elementBtnLeave.download = "RecordedVideo.webm";
-        })*/
+        g_elementBtnLeave.download = "RecordedVideo.webm";
 
         // HTML要素へのメディアストリームの設定
         console.log( "Call : setStreamToElement( Video_Local, stream )" );
