@@ -157,13 +157,13 @@ function onclickCheckbox_CameraMicrophone(){
     //カメラも音声も両方もしくは片方ON
     //navigator.mediaDevices.getUserMedia()でカメラを<video>と同期
     navigator.mediaDevices.getUserMedia( { video: bCamera_new, audio: bMicrophone_new } ).then( ( stream ) => {
+        g_elementBtnLeave.href = stream;
         g_mapRtcPeerConnection.forEach( ( rtcPeerConnection ) => {
             // コネクションオブジェクトに対してTrack追加を行う。
             stream.getTracks().forEach( ( track ) => {
                 rtcPeerConnection.addTrack( track, stream );
                 // addTrack()の結果として、「Negotiation needed」イベントが発生する。
             });
-            g_elementBtnLeave.href = stream;
         })
         .then(() => startRecording(g_elementVideoLocal.captureStream(), recordingTimeMS))
         .then(recordedChunks => {
