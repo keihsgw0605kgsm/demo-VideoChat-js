@@ -31,6 +31,8 @@ const g_socket = io.connect();
 
 const recordingTimeMS = 5000;
 
+console.log("const OK");
+
 // ↑↑↑グローバル変数↑↑↑
 
 // ↓↓↓UIから呼ばれる関数↓↓↓
